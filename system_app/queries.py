@@ -1,15 +1,31 @@
-import sqlite3
-from flask import g
-conn = sqlite3.connect('gym_system.db')
-cr = conn.cursor()
+from flask import Flask, g
+from flask_sqlalchemy import SQLAlchemy
+import mysql.connector
 
-DATABASE = 'gym_system.db'
+app = Flask(__name__)
+app.config['SECRET_KEY'] = 'my secret key'
 
+# MySQL Database Connection
+conn = mysql.connector.connect(
+    host="localhost",
+    user="root",
+    password="",
+    database="gym_system_mysql"
+)
+cursor = conn.cursor()
 
+DATABASE = 'gym_system_mysql'
+
+# Replacing SQLite's `get_db` with MySQL connection
 def get_db():
     db = getattr(g, '_database', None)
     if db is None:
-        db = g._database = sqlite3.connect(DATABASE)
+        db = g._database = mysql.connector.connect(
+            host="localhost",
+            user="root",
+            password="",
+            database=DATABASE
+        )
     return db
 
 def commit_close():
@@ -17,69 +33,60 @@ def commit_close():
     if db is not None:
         db.commit()
         db.close()
-        
+
+# Create Table Function for MySQL
 def create_table():
-    conn = sqlite3.connect('gym_system.db')
-    cr = conn.cursor()
-    cr.execute('CREATE TABLE IF NOT EXISTS attendance (id INTEGER PRIMARY KEY, date TEXT, member_id INTEGER, member_name TEXT, status TEXT)')
-    cr.execute("""CREATE TABLE IF NOT EXISTS members(
-            id INTEGER PRIMARY KEY,
-            name TEXT, email TEXT,
-            phone TEXT,age integer ,
-            gender text,
-            actual_starting_date integer,
-            starting_date integer,
-            End_date integer,
-            membership_packages text,
-            membership_fees integerو
-            membership_status text
-            )""")
+    # Note: You don't need to specify AUTO_INCREMENT explicitly here, as it's assumed for `PRIMARY KEY`
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS attendance (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        date DATE,
+        member_id INT,
+        member_name VARCHAR(100),
+        status VARCHAR(50)
+    )""")
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS members (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        name VARCHAR(100),
+        email VARCHAR(100),
+        phone VARCHAR(50),
+        age INT,
+        gender VARCHAR(10),
+        actual_starting_date DATE,
+        starting_date DATE,
+        end_date DATE,
+        membership_packages VARCHAR(100),
+        membership_fees DECIMAL(10, 2),
+        membership_status VARCHAR(50)
+    )""")
     conn.commit()
-    conn.close()
 
-# def query_db(query, args=(), one=False):
-#     conn = sqlite3.connect('gym_system.db')
-#     conn.row_factory = sqlite3.Row
-#     cur = conn.cursor()
-#     cur.execute(query, args)
-#     rv = cur.fetchall()
-#     conn.commit()
-#     conn.close()
-#     return (rv[0] if rv else None) if one else rv
-
-
-
-
+# Query the Database (Generalized Query Function for MySQL)
 def query_db(query, args=(), one=False, order_by=None):
-    conn = sqlite3.connect('gym_system.db')
-    conn.row_factory = sqlite3.Row
-    cur = conn.cursor()
+    cur = conn.cursor(dictionary=True)  # Using `dictionary=True` to return rows as dictionaries
     cur.execute(query, args)
-    rv = cur.fetchall()
-    conn.commit()
-    conn.close()
+    rv = cur.fetchall()  # Fetch all rows
+    conn.commit()  # Commit any changes if needed
 
-    if order_by:
-        # Use the specified ORDER BY clause
-        rv = sorted(rv, key=lambda x: x[order_by], reverse=True)  # Use reverse=True for descending order
+    if order_by and rv:
+        rv = sorted(rv, key=lambda x: x[order_by], reverse=True)  # Sort by order key, reverse for DESC order
 
+    # Return a single result if `one=True`, or the entire list
     return (rv[0] if rv else None) if one else rv
 
-# In your route, fetch attendance data without specific ordering
+# Fetch attendance data without specific ordering
 all_attendance_data = query_db("SELECT * FROM attendance", order_by=None)
 
-
-#cheack name exists
+# Check if a member name exists (for MySQL)
 def check_name_exists(name):
-    with sqlite3.connect("gym_system.db") as conn:
-        cr = conn.cursor()
-        cr.execute("SELECT COUNT(*) FROM members WHERE Name = ?", (name,))
-        count = cr.fetchone()[0]
-        return count > 0
+    cursor.execute("SELECT COUNT(*) FROM members WHERE name = %s", (name,))
+    count = cursor.fetchone()[0]
+    return count > 0
 
-
-
+# Check if an ID exists in members (for MySQL)
 def check_id_exists(id_to_check):
-    cr.execute("SELECT COUNT(*) FROM members WHERE id = ?", (id_to_check,))
-    count=cr.fetchone()[0]
+    cursor.execute("SELECT COUNT(*) FROM members WHERE id = %s", (id_to_check,))
+    count = cursor.fetchone()[0]
     return count > 0

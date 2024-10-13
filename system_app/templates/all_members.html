@@ -77,13 +77,121 @@
             font-size: 16px;
             border-radius: 4px;
             display: inline-block;
-            
         }
-        .index-btn:hover{
+
+        .index-btn:hover {
             background-color: #555;
         }
-        
+
+        #loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        /* Your existing CSS here */
     </style>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        let page = 1;
+        let loading = false;
+        let query = "PRIMARY(ASC)";  // Default query
+
+        $(document).ready(function () {
+            // Load members on page load
+            loadMembers();
+
+            // Listen for changes to the select dropdown
+            $('.autosubmit').change(function () {
+                query = $(this).val();  // Get selected query
+                page = 1;  // Reset to first page
+                $('#members-table tbody').empty();  // Clear current data
+                loadMembers();  // Load members with new query
+            });
+
+            // Infinite scroll handling
+            $(window).on('scroll', function () {
+                if ($(window).scrollTop() + $(window).height() >= $(document).height() - 100) {
+                    loadMoreMembers();
+                }
+            });
+        });
+
+        function loadMembers() {
+            loading = true;
+            $('#loading').show();  // Show loading indicator
+
+            $.get('/all_members?page=' + page + '&query=' + encodeURIComponent(query), function (data) {
+                if (data.members.length > 0) {
+                    data.members.forEach(member => {
+                        $('#members-table tbody').append(
+                            `<tr>
+                                        <td>${member.id}</td>
+                                        <td>${member.name}</td>
+                                        <td>${member.email}</td>
+                                        <td>${member.phone}</td>
+                                        <td>${member.age}</td>
+                                        <td>${member.gender}</td>
+                                        <td>${member.actual_starting_date}</td>
+                                        <td>${member.starting_date}</td>
+                                        <td>${member.End_date}</td>
+                                        <td>${member.membership_packages}</td>
+                                        <td>${member.membership_fees}</td>
+                                        <td>${member.membership_status}</td>
+                                        <td><a href="/image/${member.id}" target="_blank"><img src="/image/${member.id}" alt="Member Image" style="width: 50px; height: 50px;"></a></td>
+                                        <td><a class="edit-link" href="/edit_member/${member.id}">Edit</a></td>
+                                    </tr>`
+                        );
+                    });
+                    page++;  // Increment the page count
+                }
+                loading = false;  // Reset loading state
+                $('#loading').hide();  // Hide loading indicator
+            }).fail(function () {
+                console.log('Failed to load more members.');
+                loading = false;
+                $('#loading').hide();
+            });
+        }
+        function loadMoreMembers() {
+            if (loading) return;  // Prevent multiple requests
+            loading = true;
+            $('#loading').show();  // Show loading indicator
+
+            $.get('/all_members?page=' + page + '&query=' + encodeURIComponent(query), function (data) {
+                if (data.members.length > 0) {
+                    data.members.forEach(member => {
+                        $('#members-table tbody').append(
+                            `<tr>
+                                <td>${member.id}</td>
+                                <td>${member.name}</td>
+                                <td>${member.email}</td>
+                                <td>${member.phone}</td>
+                                <td>${member.age}</td>
+                                <td>${member.gender}</td>
+                                <td>${member.actual_starting_date}</td>
+                                <td>${member.starting_date}</td>
+                                <td>${member.End_date}</td>
+                                <td>${member.membership_packages}</td>
+                                <td>${member.membership_fees}</td>
+                                <td>${member.membership_status}</td>
+                                <td><a href="/image/${member.id}" target="_blank"><img src="/image/${member.id}" alt="Member Image" style="width: 50px; height: 50px;"></a></td>
+                                <td><a class="edit-link" href="/edit_member/${member.id}">Edit</a></td>
+                            </tr>`
+                        );
+                    });
+                    page++;  // Increment the page count
+                }
+                loading = false;  // Reset loading state
+                $('#loading').hide();  // Hide loading indicator
+            }).fail(function () {
+                console.log('Failed to load more members.');
+                loading = false;
+                $('#loading').hide();
+            });
+        }
+
+    </script>
 </head>
 
 <body>
@@ -92,8 +200,13 @@
     </header>
 
     <section>
-        <h2><a class="index-btn" href="{{ url_for('index') }}">Home </a>    All Members</h2>
-        <table>
+        <h2><a class="index-btn" href="{{ url_for('index') }}">Home</a> All Members</h2>
+        <select name="sql_query" class="autosubmit">
+            <option value="PRIMARY(ASC)">Sort by ID (Ascending)</option>
+            <option value="PRIMARY(DESC)">Sort by ID (Descending)</option>
+        </select>
+
+        <table id="members-table">
             <thead>
                 <tr>
                     <th>Member ID</th>
@@ -102,37 +215,49 @@
                     <th>Phone</th>
                     <th>Age</th>
                     <th>Gender</th>
-                    <th>actual starting_date</th>
-                    <th>starting date</th>
-                    <th>End date</th>
-                    <th>Membership packages</th>
-                    <th>Membership fees</th>
-                    <th>Membership status</th>
+                    <th>Actual Starting Date</th>
+                    <th>Starting Date</th>
+                    <th>End Date</th>
+                    <th>Membership Packages</th>
+                    <th>Membership Fees</th>
+                    <th>Membership Status</th>
+                    <th>ID Photo</th>
                     <th>Action</th>
                 </tr>
             </thead>
             <tbody>
                 {% for member in members_data %}
-                    <tr>
-                        <td>{{ member.id }}</td>
-                        <td>{{ member.name }}</td>
-                        <td>{{ member.email }}</td>
-                        <td>{{ member.phone }}</td>
-                        <td>{{ member.age }}</td>
-                        <td>{{ "Male" if member.gender == "Male" else "Female" }}</td>
-                        <td>{{ member.actual_starting_date }}</td>
-                        <td>{{ member.starting_date }}</td>
-                        <td>{{ member.End_date }}</td>
-                        <td>{{ member.membership_packages }}</td>
-                        <td>{{ member.membership_fees }}</td>
-                        <td>{{ member.membership_status }}</td>
-                        <td>
-                            <a class="edit-link" href="{{ url_for('edit_member', member_id=member.id) }}">Edit</a>
-                        </td>
-                    </tr>
+                <tr>
+                    <td>{{ member.id }}</td>
+                    <td>{{ member.name }}</td>
+                    <td>{{ member.email }}</td>
+                    <td>{{ member.phone }}</td>
+                    <td>{{ member.age }}</td>
+                    <td>{{ member.gender }}</td>
+                    <td>{{ member.actual_starting_date.strftime('%m %d %Y') if member.actual_starting_date else 'N/A' }}
+                    </td>
+                    <td>{{ member.starting_date.strftime('%m %d %Y') if member.starting_date else 'N/A' }}</td>
+                    <td>{{ member.End_date.strftime('%m %d %Y') if member.End_date else 'N/A' }}</td>
+                    <td>{{ member.membership_packages }}</td>
+                    <td>{{ member.membership_fees }}</td>
+                    <td>{{ member.membership_status }}</td>
+                    <td>
+                        {% if member.id_img %}
+                        <img src="data:image/jpeg;base64,{{ member.id_img }}" alt="Member Image"
+                            style="width: 50px; height: 50px;">
+                        {% else %}
+                        No Image
+                        {% endif %}
+                    </td>
+                    <td><a class="edit-link" href="{{ url_for('edit_member', member_id=member.id) }}">Edit</a></td>
+                </tr>
                 {% endfor %}
             </tbody>
+
+
         </table>
+
+        <div id="loading">Loading...</div> <!-- Loading indicator -->
     </section>
 </body>
 

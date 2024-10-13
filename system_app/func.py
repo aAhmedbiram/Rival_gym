@@ -15,15 +15,29 @@ def get_age_and_dob(date_str):
         
         return None, None
 
-def add_member(name, email, phone,age,gender,birthdate ,actual_starting_date ,starting_date,End_date,membership_packages,membership_fees,membership_status):
-    conn = sqlite3.connect('gym_system.db')
+def add_member(name, email, phone, age, gender, birthdate, actual_starting_date, starting_date, End_date, membership_packages, membership_fees, membership_status,id_img):
+    from app import get_db_connection  # Delay the import until this function is called
+    conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute('INSERT INTO members (name, email, phone, age ,gender ,birthdate,actual_starting_date, starting_date, End_date,membership_packages,membership_fees,membership_status) VALUES (?, ?, ? ,? ,?,?,?,?,?,?,?,? )'
-                                    , (name, email, phone, age, gender,birthdate,actual_starting_date,starting_date,End_date,membership_packages,membership_fees,membership_status))
+
+    cur.execute('''
+        INSERT INTO members 
+        (name, email, phone, age, gender, birthdate, actual_starting_date, starting_date, End_date, membership_packages, membership_fees, membership_status,id_img) 
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,%s)
+    ''', 
+    (name, email, phone, age, gender, birthdate, actual_starting_date, starting_date, End_date, membership_packages, membership_fees, membership_status,id_img))
+
+    # cur.execute('SELECT MAX(id) FROM members')
     new_member_id = cur.lastrowid
+
+    
     conn.commit()
+    cur.close()
     conn.close()
+
     return new_member_id
+
+
 
 ##################################################
 
